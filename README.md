@@ -21,6 +21,9 @@ In short, InferLLM is a simple and efficient LLM CPU inference framework that ca
 Currently, InferLLM uses the same models as llama.cpp and can download models from the llama.cpp project. In addition, models can also be downloaded directly from Hugging Face [kewin4933/InferLLM-Model](https://huggingface.co/kewin4933/InferLLM-Model/tree/main). Currently, two alpaca, llama2, chatglm/chatglm2 and baichuan models are uploaded in this project, one is the Chinese int4 model and the other is the English int4 model.
 
 ### Compile InferLLM
+#### Download Compiles:
+cmake  
+mingw w64  (thread)
 #### Local compilation
 ```shell
 mkdir build

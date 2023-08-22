@@ -4,9 +4,8 @@
 #include <functional>
 #include <mutex>
 #include <queue>
-#include <thread>
 #include <vector>
-
+#include <thread>
 #include "kern/kernel_define.h"
 #include "utils.h"
 

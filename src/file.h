@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <windows.h>
 
 #ifdef __has_include
 #if __has_include(<unistd.h>)
@@ -39,7 +40,8 @@ public:
             fclose(m_file);
         }
         if (m_enable_mmap) {
-            munmap(m_mmap_addr, m_size);
+            FlushViewOfFile(m_mmap_addr, m_size);
+            UnmapViewOfFile(m_mmap_addr);
         }
     }
 
