@@ -12,12 +12,12 @@ InputFile::InputFile(const std::string& path, bool enable_mmap)
     fseek(m_file, 0, SEEK_END);
     m_size = ftell(m_file);
     rewind();
-    if (m_enable_mmap) {
-        int flags = MAP_SHARED;
-        m_mmap_addr = mmap(NULL, m_size, PROT_READ, flags, m_fd, 0);
-        INFER_ASSERT(m_mmap_addr != MAP_FAILED, "mmap failed.");
-        madvise(m_mmap_addr, m_size, MADV_WILLNEED);
-    }
+    // if (m_enable_mmap) {
+    //     int flags = MAP_SHARED;
+    //     m_mmap_addr = mmap(NULL, m_size, PROT_READ, flags, m_fd, 0);
+    //     INFER_ASSERT(m_mmap_addr != MAP_FAILED, "mmap failed.");
+    //     madvise(m_mmap_addr, m_size, MADV_WILLNEED);
+    // }
 }
 
 void* InputFile::get_mmap_data(size_t len, size_t offset) {
