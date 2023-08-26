@@ -9,7 +9,7 @@
 namespace inferllm {
 namespace opt {
 
-INFER_ATTRIBUTE_TARGET("avx2")
+
 inline void quantize_row_q4_0(const float* __restrict x, void* __restrict vy, int k) {
     const int nb = k / QK40;
 
@@ -89,7 +89,7 @@ inline void quantize_row_q4_0(const float* __restrict x, void* __restrict vy, in
 }
 
 #if defined(__AVX2__)
-INFER_ATTRIBUTE_TARGET("avx2")
+
 inline void dequantize_row_q4_0(const void* __restrict vx, float* __restrict y, int k) {
     assert(k % QK40 == 0);
     const int nb = k / QK40;
@@ -135,138 +135,89 @@ inline void dequantize_row_q4_0(const void* __restrict vx, float* __restrict y, 
     }
 }
 
-#elif defined(__AVX__)
-INFER_ATTRIBUTE_TARGET("avx")
-inline void quantize_row_q4_0(const float* __restrict x, void* __restrict vy, int k) {
-    const int nb = k / QK40;
+// #elif defined(__AVX__)
+// INFER_ATTRIBUTE_TARGET("avx")
+// inline void quantize_row_q4_0(const float* __restrict x, void* __restrict vy, int k) {
+//     const int nb = k / QK40;
 
-    BlockQ40* __restrict y = static_cast<BlockQ40*>(vy);
+//     BlockQ40* __restrict y = static_cast<BlockQ40*>(vy);
 
-    for (int i = 0; i < nb; i++) {
-        // Load elements into 4 AVX vectors
-        __m256 v0 = _mm256_loadu_ps(x);
-        __m256 v1 = _mm256_loadu_ps(x + 8);
-        __m256 v2 = _mm256_loadu_ps(x + 16);
-        __m256 v3 = _mm256_loadu_ps(x + 24);
-        x += 32;
+//     for (int i = 0; i < nb; i++) {
+//         // Load elements into 4 AVX vectors
+//         __m256 v0 = _mm256_loadu_ps(x);
+//         __m256 v1 = _mm256_loadu_ps(x + 8);
+//         __m256 v2 = _mm256_loadu_ps(x + 16);
+//         __m256 v3 = _mm256_loadu_ps(x + 24);
+//         x += 32;
 
-        // Compute max(abs(e)) for the block
-        const __m256 signBit = _mm256_set1_ps(-0.0f);
-        __m256 maxAbs = _mm256_andnot_ps(signBit, v0);
-        maxAbs = _mm256_max_ps(maxAbs, _mm256_andnot_ps(signBit, v1));
-        maxAbs = _mm256_max_ps(maxAbs, _mm256_andnot_ps(signBit, v2));
-        maxAbs = _mm256_max_ps(maxAbs, _mm256_andnot_ps(signBit, v3));
+//         // Compute max(abs(e)) for the block
+//         const __m256 signBit = _mm256_set1_ps(-0.0f);
+//         __m256 maxAbs = _mm256_andnot_ps(signBit, v0);
+//         maxAbs = _mm256_max_ps(maxAbs, _mm256_andnot_ps(signBit, v1));
+//         maxAbs = _mm256_max_ps(maxAbs, _mm256_andnot_ps(signBit, v2));
+//         maxAbs = _mm256_max_ps(maxAbs, _mm256_andnot_ps(signBit, v3));
 
-        __m128 max4 = _mm_max_ps(
-                _mm256_extractf128_ps(maxAbs, 1), _mm256_castps256_ps128(maxAbs));
-        max4 = _mm_max_ps(max4, _mm_movehl_ps(max4, max4));
-        max4 = _mm_max_ss(max4, _mm_movehdup_ps(max4));
-        const float maxScalar = _mm_cvtss_f32(max4);
+//         __m128 max4 = _mm_max_ps(
+//                 _mm256_extractf128_ps(maxAbs, 1), _mm256_castps256_ps128(maxAbs));
+//         max4 = _mm_max_ps(max4, _mm_movehl_ps(max4, max4));
+//         max4 = _mm_max_ss(max4, _mm_movehdup_ps(max4));
+//         const float maxScalar = _mm_cvtss_f32(max4);
 
-        // Quantize these floats
-        const float d = maxScalar / 7.0f;
-        y[i].d = d;
-        const float id = (maxScalar != 0.0f) ? 7.0f / maxScalar : 0.0f;
-        const __m256 mul = _mm256_set1_ps(id);
+//         // Quantize these floats
+//         const float d = maxScalar / 7.0f;
+//         y[i].d = d;
+//         const float id = (maxScalar != 0.0f) ? 7.0f / maxScalar : 0.0f;
+//         const __m256 mul = _mm256_set1_ps(id);
 
-        // Apply the multiplier
-        v0 = _mm256_mul_ps(v0, mul);
-        v1 = _mm256_mul_ps(v1, mul);
-        v2 = _mm256_mul_ps(v2, mul);
-        v3 = _mm256_mul_ps(v3, mul);
+//         // Apply the multiplier
+//         v0 = _mm256_mul_ps(v0, mul);
+//         v1 = _mm256_mul_ps(v1, mul);
+//         v2 = _mm256_mul_ps(v2, mul);
+//         v3 = _mm256_mul_ps(v3, mul);
 
-        // Round to nearest integer
-        v0 = _mm256_round_ps(v0, _MM_ROUND_NEAREST);
-        v1 = _mm256_round_ps(v1, _MM_ROUND_NEAREST);
-        v2 = _mm256_round_ps(v2, _MM_ROUND_NEAREST);
-        v3 = _mm256_round_ps(v3, _MM_ROUND_NEAREST);
+//         // Round to nearest integer
+//         v0 = _mm256_round_ps(v0, _MM_ROUND_NEAREST);
+//         v1 = _mm256_round_ps(v1, _MM_ROUND_NEAREST);
+//         v2 = _mm256_round_ps(v2, _MM_ROUND_NEAREST);
+//         v3 = _mm256_round_ps(v3, _MM_ROUND_NEAREST);
 
-        // Convert floats to integers
-        __m256i i0 = _mm256_cvtps_epi32(v0);
-        __m256i i1 = _mm256_cvtps_epi32(v1);
-        __m256i i2 = _mm256_cvtps_epi32(v2);
-        __m256i i3 = _mm256_cvtps_epi32(v3);
+//         // Convert floats to integers
+//         __m256i i0 = _mm256_cvtps_epi32(v0);
+//         __m256i i1 = _mm256_cvtps_epi32(v1);
+//         __m256i i2 = _mm256_cvtps_epi32(v2);
+//         __m256i i3 = _mm256_cvtps_epi32(v3);
 
-        // Since we don't have in AVX some necessary functions,
-        // we split the registers in half and call AVX2 analogs from SSE
-        __m128i ni0 = _mm256_castsi256_si128(i0);
-        __m128i ni1 = _mm256_extractf128_si256(i0, 1);
-        __m128i ni2 = _mm256_castsi256_si128(i1);
-        __m128i ni3 = _mm256_extractf128_si256(i1, 1);
-        __m128i ni4 = _mm256_castsi256_si128(i2);
-        __m128i ni5 = _mm256_extractf128_si256(i2, 1);
-        __m128i ni6 = _mm256_castsi256_si128(i3);
-        __m128i ni7 = _mm256_extractf128_si256(i3, 1);
+//         // Since we don't have in AVX some necessary functions,
+//         // we split the registers in half and call AVX2 analogs from SSE
+//         __m128i ni0 = _mm256_castsi256_si128(i0);
+//         __m128i ni1 = _mm256_extractf128_si256(i0, 1);
+//         __m128i ni2 = _mm256_castsi256_si128(i1);
+//         __m128i ni3 = _mm256_extractf128_si256(i1, 1);
+//         __m128i ni4 = _mm256_castsi256_si128(i2);
+//         __m128i ni5 = _mm256_extractf128_si256(i2, 1);
+//         __m128i ni6 = _mm256_castsi256_si128(i3);
+//         __m128i ni7 = _mm256_extractf128_si256(i3, 1);
 
-        // Convert int32 to int16
-        ni0 = _mm_packs_epi32(ni0, ni1);
-        ni2 = _mm_packs_epi32(ni2, ni3);
-        ni4 = _mm_packs_epi32(ni4, ni5);
-        ni6 = _mm_packs_epi32(ni6, ni7);
-        // Convert int16 to int8
-        ni0 = _mm_packs_epi16(ni0, ni2);
-        ni4 = _mm_packs_epi16(ni4, ni6);
+//         // Convert int32 to int16
+//         ni0 = _mm_packs_epi32(ni0, ni1);
+//         ni2 = _mm_packs_epi32(ni2, ni3);
+//         ni4 = _mm_packs_epi32(ni4, ni5);
+//         ni6 = _mm_packs_epi32(ni6, ni7);
+//         // Convert int16 to int8
+//         ni0 = _mm_packs_epi16(ni0, ni2);
+//         ni4 = _mm_packs_epi16(ni4, ni6);
 
-        // Apply offset to translate the range from [ -7 .. +7 ] into [ +1 ..
-        // +15 ]
-        const __m128i off = _mm_set1_epi8(8);
-        ni0 = _mm_add_epi8(ni0, off);
-        ni4 = _mm_add_epi8(ni4, off);
+//         // Apply offset to translate the range from [ -7 .. +7 ] into [ +1 ..
+//         // +15 ]
+//         const __m128i off = _mm_set1_epi8(8);
+//         ni0 = _mm_add_epi8(ni0, off);
+//         ni4 = _mm_add_epi8(ni4, off);
 
-        // Compress the vector into 4 bit/value, and store
-        __m128i res = packNibbles(ni0, ni4);
-        _mm_storeu_si128((__m128i*)y[i].qs, res);
-    }
-}
-
-#else
-INFER_ATTRIBUTE_TARGET("default")
-inline void quantize_row_q4_0(const float* __restrict x, void* __restrict vy, int k) {
-    const int nb = k / QK40;
-
-    BlockQ40* __restrict y = static_cast<BlockQ40*>(vy);
-    // scalar
-    naive::quantize_row_q4_0_reference(x, y, k);
-}
+//         // Compress the vector into 4 bit/value, and store
+//         __m128i res = packNibbles(ni0, ni4);
+//         _mm_storeu_si128((__m128i*)y[i].qs, res);
+//     }
+// }
 #endif
-
-INFER_ATTRIBUTE_TARGET("default")
-inline void dequantize_row_q4_0(const void* __restrict vx, float* __restrict y, int k) {
-    assert(k % QK40 == 0);
-    const int nb = k / QK40;
-
-    const BlockQ40* __restrict x = static_cast<const BlockQ40*>(vx);
-
-    // scalar
-    for (int i = 0; i < nb; i++) {
-        const float d = x[i].d;
-
-        const uint8_t* __restrict pp = x[i].qs;
-
-        for (int l = 0; l < QK40; l += 2) {
-            const uint8_t vi = pp[l / 2];
-
-            const int8_t vi0 = vi & 0xf;
-            const int8_t vi1 = vi >> 4;
-
-            const float v0 = (vi0 - 8) * d;
-            const float v1 = (vi1 - 8) * d;
-
-            y[i * QK40 + l + 0] = v0;
-            y[i * QK40 + l + 1] = v1;
-
-            assert(!isnan(y[i * QK40 + l + 0]));
-            assert(!isnan(y[i * QK40 + l + 1]));
-        }
-    }
-}
-
-INFER_ATTRIBUTE_TARGET("default")
-inline void quantize_row_q8_0(const float* __restrict x, void* __restrict vy, int k) {
-    assert(k % QK80 == 0);
-    BlockQ80* y = static_cast<BlockQ80*>(vy);
-    naive::quantize_row_q8_0_reference(x, y, k);
-}
-
 }  // namespace opt
 }  // namespace inferllm

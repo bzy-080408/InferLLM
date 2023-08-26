@@ -8,7 +8,6 @@
 namespace inferllm {
 namespace opt {
 
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline __m128i packNibbles(__m256i bytes) {
     // Move bits within 16-bit lanes from 0000_abcd_0000_efgh into 0000_0000_abcd_efgh
     const __m256i lowByte = _mm256_set1_epi16(0xFF);
@@ -23,25 +22,8 @@ static inline __m128i packNibbles(__m256i bytes) {
     return _mm_packus_epi16(r0, r1);
 }
 
-INFER_ATTRIBUTE_TARGET("avx")
-static inline __m128i packNibbles(__m128i bytes1, __m128i bytes2) {
-    // Move bits within 16-bit lanes from 0000_abcd_0000_efgh into 0000_0000_abcd_efgh
-    const __m128i lowByte = _mm_set1_epi16(0xFF);
-    __m128i high = _mm_andnot_si128(lowByte, bytes1);
-    __m128i low = _mm_and_si128(lowByte, bytes1);
-    high = _mm_srli_epi16(high, 4);
-    bytes1 = _mm_or_si128(low, high);
-    high = _mm_andnot_si128(lowByte, bytes2);
-    low = _mm_and_si128(lowByte, bytes2);
-    high = _mm_srli_epi16(high, 4);
-    bytes2 = _mm_or_si128(low, high);
-
-    return _mm_packus_epi16(bytes1, bytes2);
-}
-
 // Unpack 32 4-bit fields into 32 bytes
 // The output vector contains 32 bytes, each one in [ 0 .. 15 ] interval
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline __m256i bytesFromNibbles(const uint8_t* rsi) {
     // Load 16 bytes from memory
     __m128i tmp = _mm_loadu_si128((const __m128i*)rsi);
@@ -58,14 +40,12 @@ static inline __m256i bytesFromNibbles(const uint8_t* rsi) {
     return bytes;
 }
 
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline __m256 sum_i16_pairs_float(const __m256i x) {
     const __m256i ones = _mm256_set1_epi16(1);
     const __m256i summed_pairs = _mm256_madd_epi16(ones, x);
     return _mm256_cvtepi32_ps(summed_pairs);
 }
 
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline __m256 mul_sum_i8_pairs_float(const __m256i x, const __m256i y) {
     // Get absolute values of x vectors
     const __m256i ax = _mm256_sign_epi8(x, x);
@@ -76,7 +56,6 @@ static inline __m256 mul_sum_i8_pairs_float(const __m256i x, const __m256i y) {
     return sum_i16_pairs_float(dot);
 }
 
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline float hsum_float_8(const __m256 x) {
     __m128 res = _mm256_extractf128_ps(x, 1);
     res = _mm_add_ps(res, _mm256_castps256_ps128(x));
@@ -87,7 +66,6 @@ static inline float hsum_float_8(const __m256 x) {
 
 // Unpack 16 4-bit fields into 16 bytes
 // The output vector contains 16 bytes, each one in [ 0 .. 15 ] interval
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline __m128i bytes_from_nibbles_16(const uint8_t* rsi) {
     // Load 8 bytes from memory
     __m128i tmp = _mm_loadl_epi64((const __m128i*)rsi);
@@ -138,7 +116,6 @@ _PS256_CONST(cephes_exp_p3, 4.1665795894E-2);
 _PS256_CONST(cephes_exp_p4, 1.6666665459E-1);
 _PS256_CONST(cephes_exp_p5, 5.0000001201E-1);
 
-INFER_ATTRIBUTE_TARGET("avx2")
 static inline v8sf exp256_ps(v8sf x) {
     v8sf tmp = _mm256_setzero_ps(), fx;
     v8si imm0;
